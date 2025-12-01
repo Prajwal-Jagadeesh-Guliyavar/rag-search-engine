@@ -1,7 +1,7 @@
 import string
+from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies, load_stopwords
 
-from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies
-
+STOP_WORDS = load_stopwords()
 
 def preprocess_text(text: str) -> str:
     text = text.lower()
@@ -30,13 +30,15 @@ def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
     movies = load_movies()
     results = []
+
+    query_tokens = tokenize_text(query)
+
     for movie in movies:
-        query_tokens = tokenize_text(query)
         title_tokens = tokenize_text(movie["title"])
+
         if has_matching_token(query_tokens, title_tokens):
             results.append(movie)
             if len(results) >= limit:
                 break
 
     return results
-
