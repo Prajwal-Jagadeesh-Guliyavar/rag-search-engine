@@ -1,6 +1,17 @@
 import argparse
+import sys
+from pathlib import Path
 
-from lib.keyword_search import search_command
+cli_dir = Path(__file__).parent.resolve()
+lib_dir = cli_dir / "lib"
+if str(lib_dir) not in sys.path:
+    sys.path.insert(0, str(lib_dir))
+
+try:
+    from keyword_search import search_command
+
+except Exception:
+    from lib.keyword_search import search_command
 
 ###################################################################################################
 
