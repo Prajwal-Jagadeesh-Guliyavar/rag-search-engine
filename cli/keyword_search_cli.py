@@ -1,4 +1,13 @@
 import argparse
+import json
+from pathlib import Path
+
+
+def load_movies():
+    data_path = Path(__file__).parent.parent / "data" / "movies.json"
+    with data_path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+    return data["movies"]
 
 
 def main() -> None:
