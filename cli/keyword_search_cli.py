@@ -1,30 +1,6 @@
 import argparse
-import json
-from pathlib import Path
 
-
-def load_movies():
-    data_path = Path(__file__).parent.parent / "data" / "movies.json"
-    with data_path.open("r", encoding="utf-8") as f:
-        data = json.load(f)
-    return data["movies"]
-
-
-###################################################################################################
-
-
-def search_movies(query: str):
-    movies = load_movies()
-    results = []
-
-    for m in movies:
-        if query in m["title"]:
-            results.append(m)
-
-    results.sort(key=lambda m: m["id"])
-
-    return results[:5]
-
+from lib.keyword_search import search_command
 
 ###################################################################################################
 
@@ -43,10 +19,10 @@ def main() -> None:
             query = args.query
             print(f"Searching for: {query}")
 
-            results = search_movies(query)
+            results = search_command(query)
 
-            for idx, movie in enumerate(results, start=1):
-                print(f"{idx}. {movie['title']}")
+            for i, res in enumerate(results, 1):
+                print(f"{i}. {res['title']}")
 
         case _:
             parser.print_help()
