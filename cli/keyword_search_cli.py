@@ -1,5 +1,4 @@
 import argparse
-
 from lib.keyword_search import search_command
 
 

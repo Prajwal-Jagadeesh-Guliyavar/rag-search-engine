@@ -1,5 +1,4 @@
 import string
-
 from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies
 
 
