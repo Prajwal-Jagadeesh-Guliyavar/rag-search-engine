@@ -10,6 +10,25 @@ def load_movies():
     return data["movies"]
 
 
+###################################################################################################
+
+
+def search_movies(query: str):
+    movies = load_movies()
+    results = []
+
+    for m in movies:
+        if query in m["title"]:
+            results.append(m)
+
+    results.sort(key=lambda m: m["id"])
+
+    return results[:5]
+
+
+###################################################################################################
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -25,6 +44,8 @@ def main() -> None:
         case _:
             parser.print_help()
 
+
+###################################################################################################
 
 if __name__ == "__main__":
     main()
