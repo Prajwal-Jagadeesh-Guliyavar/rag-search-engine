@@ -14,7 +14,7 @@ def load_movies() -> list[dict]:
     return data["movies"]
 
 
-def load_stopwords()->set[str]:
+def load_stopwords()->set:
     words_set = set()
     with open(STOP_WORDS_PATH, "r") as f:
         content = f.read()

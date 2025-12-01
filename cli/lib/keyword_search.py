@@ -14,7 +14,7 @@ def tokenize_text(text: str) -> list[str]:
     tokens = text.split()
     valid_tokens = []
     for token in tokens:
-        if token:
+        if token and token not in STOP_WORDS:
             valid_tokens.append(token)
     return valid_tokens
 
@@ -28,17 +28,20 @@ def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool
 
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
-    movies = load_movies()
-    results = []
+    movies = load_movies() or []
+    results: list[dict] = []
 
     query_tokens = tokenize_text(query)
 
+    if not query_tokens:
+        return []
+
     for movie in movies:
-        title_tokens = tokenize_text(movie["title"])
+        title = movie.get("title", "")
+        title_tokens = tokenize_text(title)
 
         if has_matching_token(query_tokens, title_tokens):
             results.append(movie)
-            if len(results) >= limit:
-                break
 
-    return results
+    results.sort(key=lambda m: m.get("id", 0))
+    return results[:limit]
