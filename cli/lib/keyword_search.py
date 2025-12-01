@@ -6,6 +6,9 @@ from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies
 
 
 def preprocess_text(text: str) -> str:
+    if text is None:
+        return ""
+
     text = text.lower()
     text = text.translate(str.maketrans("", "", string.punctuation))
     return text
