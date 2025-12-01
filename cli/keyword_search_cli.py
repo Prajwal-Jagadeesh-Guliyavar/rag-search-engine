@@ -40,7 +40,14 @@ def main() -> None:
 
     match args.command:
         case "search":
-            print(f"Searching for: {args.query}")
+            query = args.query
+            print(f"Searching for: {query}")
+
+            results = search_movies(query)
+
+            for idx, movie in enumerate(results, start=1):
+                print(f"{idx}. {movie['title']}")
+
         case _:
             parser.print_help()
 
