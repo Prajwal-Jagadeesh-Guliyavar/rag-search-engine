@@ -1,22 +1,13 @@
 import string
-import unicodedata
-
 from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies
 
 ###################################################################################################
 
 
 def preprocess_text(text: str) -> str:
-    if text is None:
-        return ""
-
     text = text.lower()
-    cleaned = []
-
-    for ch in text:
-        if not unicodedata.category(ch).startswith("P"):
-            cleaned.append(ch)
-    return "".join(cleaned)
+    text = text.translate(str.maketrans("", "", string.punctuation))
+    return text
 
 
 ###################################################################################################
