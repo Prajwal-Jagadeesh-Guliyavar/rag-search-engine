@@ -2,62 +2,41 @@ import string
 
 from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies
 
-###################################################################################################
-
 
 def preprocess_text(text: str) -> str:
-    if text is None:
-        return ""
-
     text = text.lower()
     text = text.translate(str.maketrans("", "", string.punctuation))
     return text
 
 
-###################################################################################################
+def tokenize_text(text: str) -> list[str]:
+    text = preprocess_text(text)
+    tokens = text.split()
+    valid_tokens = []
+    for token in tokens:
+        if token:
+            valid_tokens.append(token)
+    return valid_tokens
 
 
-def tokenize(text: str) -> list[dict]:
-    temp = []
-    for t in text.split():
-        if t:
-            temp.append(t)
-    return temp
-
-
-###################################################################################################
+def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool:
+    for query_token in query_tokens:
+        for title_token in title_tokens:
+            if query_token in title_token:
+                return True
+    return False
 
 
 def search_command(query: str, limit: int = DEFAULT_SEARCH_LIMIT) -> list[dict]:
-    movies = load_movies() or []
+    movies = load_movies()
     results = []
-
-    processed_query = preprocess_text(query)
-    query_tokens = tokenize(processed_query)
-    if not query_tokens:
-        return []
-
     for movie in movies:
-        title = movie.get("title", "")
-        processed_title = preprocess_text(title)
-        title_tokens = tokenize(processed_title)
-
-        match_found = False
-        for q_tok in query_tokens:
-            for t_tok in title_tokens:
-                if q_tok in t_tok:
-                    match_found = True
-                    break
-            if match_found:
-                break
-
-        if match_found:
+        query_tokens = tokenize_text(query)
+        title_tokens = tokenize_text(movie["title"])
+        if has_matching_token(query_tokens, title_tokens):
             results.append(movie)
             if len(results) >= limit:
                 break
 
-    results.sort(key=lambda m: m.get("id", 0))
-    return results[:limit]
+    return results
 
-
-###################################################################################################
