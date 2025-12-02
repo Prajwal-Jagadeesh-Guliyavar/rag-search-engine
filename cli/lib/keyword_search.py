@@ -1,25 +1,4 @@
-import string
-from nltk.stem import PorterStemmer
-from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies, load_stopwords
-
-STOP_WORDS = load_stopwords()
-stemmer = PorterStemmer()
-
-def preprocess_text(text: str) -> str:
-    text = text.lower()
-    text = text.translate(str.maketrans("", "", string.punctuation))
-    return text
-
-
-def tokenize_text(text: str) -> list[str]:
-    text = preprocess_text(text)
-    tokens = text.split()
-    valid_tokens = []
-    for token in tokens:
-        if token and token not in STOP_WORDS:
-            stemmed_token = stemmer.stem(token)
-            valid_tokens.append(stemmed_token)
-    return valid_tokens
+from .search_utils import DEFAULT_SEARCH_LIMIT, load_movies, tokenize_text
 
 
 def has_matching_token(query_tokens: list[str], title_tokens: list[str]) -> bool:
