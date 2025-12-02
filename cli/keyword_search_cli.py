@@ -20,10 +20,17 @@ def main() -> None:
             query = args.query
             print(f"Searching for: {query}")
 
-            results = search_command(query)
+            try:
+                index = InvertedIndex()
+                index.load()
+            except FileNotFoundError as e:
+                print(e)
+                return
+
+            results = search_command(query, index)
 
             for i, res in enumerate(results, 1):
-                print(f"{i}. {res['title']}")
+                print(f"{i}. [ID: {res['id']}] {res['title']}")
         
         case "build":
             print("Building inverted index...")
@@ -31,9 +38,6 @@ def main() -> None:
             index.build()
             index.save()
             print("Inverted index built and saved.")
-            docs = index.get_documents("merida")
-            if docs:
-                print(f"First document for token 'merida' = {docs[0]}")
 
         case _:
             parser.print_help()
