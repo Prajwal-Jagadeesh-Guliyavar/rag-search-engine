@@ -13,6 +13,10 @@ def main() -> None:
 
     build_parser = subparsers.add_parser("build", help="Build the inverted index")
 
+    tf_parser = subparsers.add_parser("tf", help="Get term frequency")
+    tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    tf_parser.add_argument("term", type=str, help="Term to get frequency for")
+
     args = parser.parse_args()
 
     match args.command:
@@ -38,6 +42,23 @@ def main() -> None:
             index.build()
             index.save()
             print("Inverted index built and saved.")
+
+        case "tf":
+            doc_id = args.doc_id
+            term = args.term
+
+            try:
+                index = InvertedIndex()
+                index.load()
+            except FileNotFoundError as e:
+                print(e)
+                return
+
+            try:
+                tf = index.get_tf(doc_id, term)
+                print(tf)
+            except ValueError as e:
+                print(e)
 
         case _:
             parser.print_help()
