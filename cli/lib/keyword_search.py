@@ -1,7 +1,7 @@
 import string
 import os
 import pickle
-from collections import defaultdict
+from collections import defaultdict, Counter
 from nltk import PorterStemmer
 from .search_utils import (
     CACHE_DIR,
@@ -17,6 +17,8 @@ class InvertedIndex:
         self.docmap : dict[int, dict] = {}
         self.index_path = os.path.join(CACHE_DIR, "index.pkl")
         self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
+        self.tf_path = os.path.join(CACHE_DIR, "term_frequency.pkl")
+        self.term_frequencies = os.path.join(Counter)
 
     def build(self) -> None:
         movies = load_movies()
@@ -32,6 +34,8 @@ class InvertedIndex:
             pickle.dump(self.index, f)
         with open(self.docmap_path, "wb") as f:
             pickle.dump(self.docmap, f)
+        with open(self.tf_path, "wb") as f:
+            pickle.dump(self.term_frequencies, f)
 
     def load(self) -> None:
         with open(self.index_path, "rb") as f :
@@ -43,10 +47,18 @@ class InvertedIndex:
         doc_ids = self.index.get(term, set())
         return sorted(list(doc_ids))
 
-    def __add_document(self, doc_ids : int, text:str)->None:
+    def __add_document(self, doc_id : int, text:str)->None:
         tokens = tokenize_text(text)
         for token in set(tokens):
-            self.index[token].add(doc_ids)
+            self.index[token].add(doc_id)
+        self.term_frequencies[doc_id].update(tokens)
+
+    def get_tf(self, doc_id:int, term:str) -> int:
+        tokens = tokenize_text(term)
+        if len(tokens) != 1:
+            raise ValueError("term must be a single term")
+        token = tokens[0]
+        return self.term_frequencies[doc_id][token]
 
 
 
@@ -110,3 +122,9 @@ def tokenize_text(text: str) -> list[str]:
         stemmed_words.append(stemmer.stem(word))
 
     return stemmed_words
+
+
+def tf_command(doc_id : int, term :str)->int:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.get_tf(doc_id, term)
