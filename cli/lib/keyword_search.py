@@ -20,3 +20,14 @@ def search_command(
             break
     
     return [index.docmap[doc_id] for doc_id in sorted(list(results))][:limit]
+
+
+def bm25_idf_command(term: str) -> float:
+    try:
+        index = InvertedIndex()
+        index.load()
+    except FileNotFoundError as e:
+        print(e)
+        return 0.0
+
+    return index.get_bm25_idf(term)

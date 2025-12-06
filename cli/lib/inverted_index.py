@@ -40,6 +40,21 @@ class InvertedIndex:
         
         return self.term_frequencies[doc_id].get(token, 0)
 
+    def get_bm25_idf(self, term: str) -> float:
+        import math
+        tokens = tokenize_text(term)
+        if len(tokens) > 1:
+            raise ValueError("More than one token in term")
+        
+        if not tokens:
+            return 0.0
+
+        token = tokens[0]
+        N = len(self.docmap)
+        df = len(self.index.get(token, []))
+        
+        return math.log((N - df + 0.5) / (df + 0.5) + 1)
+
     def build(self):
         movies = load_movies()
         for movie in movies:
