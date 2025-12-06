@@ -1,3 +1,4 @@
+import math
 import string
 import os
 import pickle
@@ -17,8 +18,8 @@ class InvertedIndex:
         self.docmap : dict[int, dict] = {}
         self.index_path = os.path.join(CACHE_DIR, "index.pkl")
         self.docmap_path = os.path.join(CACHE_DIR, "docmap.pkl")
-        self.tf_path = os.path.join(CACHE_DIR, "term_frequency.pkl")
-        self.term_frequencies = os.path.join(Counter)
+        self.tf_path = os.path.join(CACHE_DIR, "term_frequencies.pkl")
+        self.term_frequencies = defaultdict(Counter)
 
     def build(self) -> None:
         movies = load_movies()
@@ -59,6 +60,15 @@ class InvertedIndex:
             raise ValueError("term must be a single term")
         token = tokens[0]
         return self.term_frequencies[doc_id][token]
+
+    def get_idf(self, term:str)->float:
+        tokens = tokenize_text(term)
+        if len(tokens) != 1:
+            raise ValueError("Term must be a single token")
+        token = tokens[0]
+        doc_count = len(self.docmap)
+        term_doc_count = len(self.index[token])
+        return math.log((doc_count+1)/(term_doc_count+1))
 
 
 
@@ -128,3 +138,8 @@ def tf_command(doc_id : int, term :str)->int:
     idx = InvertedIndex()
     idx.load()
     return idx.get_tf(doc_id, term)
+
+def idf_command(term:str) -> float:
+    idx = InvertedIndex()
+    idx.load()
+    return idx.get_idf(term)
