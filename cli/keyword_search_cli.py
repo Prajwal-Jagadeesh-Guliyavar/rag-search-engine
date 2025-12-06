@@ -43,92 +43,20 @@ def main() -> None:
         "b", type=float, nargs="?", default=BM25_B, help="Tunable BM25 b parameter"
     )
 
+    bm25search_parser = subparsers.add_parser(
+        "bm25search", help="Search movies using full BM25 scoring"
+    )
+    bm25search_parser.add_argument("query", type=str, help="Search query")
+    bm25search_parser.add_argument(
+        "--limit", type=int, default=5, help="Number of results to return"
+    )
+
     args = parser.parse_args()
 
     match args.command:
         case "search":
             query = args.query
             print(f"Searching for: {query}")
-
-            try:
-                index = InvertedIndex()
-                index.load()
-            except FileNotFoundError as e:
-                print(e)
-                return
-
-            results = search_command(query, index)
-
-            for i, res in enumerate(results, 1):
-                print(f"{i}. [ID: {res['id']}] {res['title']}")
-
-        case "build":
-            print("Building inverted index...")
-            index = InvertedIndex()
-            index.build()
-            index.save()
-            print("Inverted index built and saved.")
-
-        case "tf":
-            doc_id = args.doc_id
-            term = args.term
-
-            try:
-                index = InvertedIndex()
-                index.load()
-            except FileNotFoundError as e:
-                print(e)
-                return
-
-            try:
-                tf = index.get_tf(doc_id, term)
-                print(tf)
-            except ValueError as e:
-                print(e)
-
-        case "idf":
-            term = args.term
-
-            try:
-                index = InvertedIndex()
-                index.load()
-            except FileNotFoundError as e:
-                print(e)
-                return
-
-            total_doc_count = len(index.docmap)
-            term_match_doc_count = len(index.get_documents(term))
-            idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
-            print(f"Inverse document frequency of '{args.term}': {idf:.2f}")
-
-        case "tfidf":
-            doc_id = args.doc_id
-            term = args.term
-
-            try:
-                index = InvertedIndex()
-                index.load()
-            except FileNotFoundError as e:
-                print(e)
-                return
-
-            try:
-                tf = index.get_tf(doc_id, term)
-                total_doc_count = len(index.docmap)
-                term_match_doc_count = len(index.get_documents(term))
-                idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
-                tf_idf = tf * idf
-                print(
-                    f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}"
-                )
-            except ValueError as e:
-                print(e)
-
-        case "bm25idf":
-            term = args.term
-            bm25idf = bm25_idf_command(term)
-            print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
-
         case "bm25tf":
             doc_id = args.doc_id
             term = args.term
@@ -139,6 +67,19 @@ def main() -> None:
                 print(f"{bm25tf:.2f}")
             else:
                 print("0.00")
+
+        case "bm25search":
+            query = args.query
+            limit = args.limit
+            try:
+                index = InvertedIndex()
+                index.load()
+            except FileNotFoundError as e:
+                print(e)
+                return
+            results = index.bm25_search(query, BM25_K1, BM25_B, limit)
+            for i, (doc, score) in enumerate(results, 1):
+                print(f"{i}. ({doc['id']}) {doc['title']} - Score: {score:.2f}")
 
         case _:
             parser.print_help()
