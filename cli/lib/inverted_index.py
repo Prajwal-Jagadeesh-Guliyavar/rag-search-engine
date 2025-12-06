@@ -55,6 +55,10 @@ class InvertedIndex:
         
         return math.log((N - df + 0.5) / (df + 0.5) + 1)
 
+    def get_bm25_tf(self, doc_id: int, term: str, k1: float) -> float:
+        tf = self.get_tf(doc_id, term)
+        return (tf * (k1 + 1)) / (tf + k1)
+
     def build(self):
         movies = load_movies()
         for movie in movies:

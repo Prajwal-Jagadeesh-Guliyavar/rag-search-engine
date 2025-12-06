@@ -31,3 +31,14 @@ def bm25_idf_command(term: str) -> float:
         return 0.0
 
     return index.get_bm25_idf(term)
+
+
+def bm25_tf_command(doc_id: int, term: str, k1: float) -> float:
+    try:
+        index = InvertedIndex()
+        index.load()
+    except FileNotFoundError as e:
+        print(e)
+        return 0.0
+
+    return index.get_bm25_tf(doc_id, term, k1)

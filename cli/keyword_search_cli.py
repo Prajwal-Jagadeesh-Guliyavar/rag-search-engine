@@ -1,8 +1,9 @@
 import argparse
 import math
 
-from lib.keyword_search import search_command, bm25_idf_command
+from lib.keyword_search import search_command, bm25_idf_command, bm25_tf_command
 from lib.inverted_index import InvertedIndex
+from lib.search_utils import BM25_K1
 
 
 def main() -> None:
@@ -29,6 +30,13 @@ def main() -> None:
         'bm25idf', help="Get BM25 IDF score for a given term"
     )
     bm25_idf_parser.add_argument("term", type=str, help="Term to get BM25 IDF score for")
+
+    bm25_tf_parser = subparsers.add_parser(
+        "bm25tf", help="Get BM25 TF score for a given document ID and term"
+    )
+    bm25_tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    bm25_tf_parser.add_argument("term", type=str, help="Term to get BM25 TF score for")
+    bm25_tf_parser.add_argument("k1", type=float, nargs='?', default=BM25_K1, help="Tunable BM25 K1 parameter")
 
     args = parser.parse_args()
 
@@ -113,6 +121,13 @@ def main() -> None:
             term = args.term
             bm25idf = bm25_idf_command(term)
             print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
+
+        case "bm25tf":
+            doc_id = args.doc_id
+            term = args.term
+            k1 = args.k1
+            bm25tf = bm25_tf_command(doc_id, term, k1)
+            print(f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25tf:.2f}")
 
         case _:
             parser.print_help()
