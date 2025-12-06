@@ -1,9 +1,9 @@
 import argparse
 import math
 
-from lib.keyword_search import search_command, bm25_idf_command, bm25_tf_command
 from lib.inverted_index import InvertedIndex
-from lib.search_utils import BM25_K1
+from lib.keyword_search import bm25_idf_command, bm25_tf_command, search_command
+from lib.search_utils import BM25_B, BM25_K1
 
 
 def main() -> None:
@@ -27,7 +27,7 @@ def main() -> None:
     tfidf_parser.add_argument("term", type=str, help="Term to get TF-IDF for")
 
     bm25_idf_parser = subparsers.add_parser(
-        'bm25idf', help="Get BM25 IDF score for a given term"
+        "bm25idf", help="Get BM25 IDF score for a given term"
     )
     bm25_idf_parser.add_argument("term", type=str, help="Term to get BM25 IDF score for")
 
@@ -36,7 +36,12 @@ def main() -> None:
     )
     bm25_tf_parser.add_argument("doc_id", type=int, help="Document ID")
     bm25_tf_parser.add_argument("term", type=str, help="Term to get BM25 TF score for")
-    bm25_tf_parser.add_argument("k1", type=float, nargs='?', default=BM25_K1, help="Tunable BM25 K1 parameter")
+    bm25_tf_parser.add_argument(
+        "k1", type=float, nargs="?", default=BM25_K1, help="Tunable BM25 K1 parameter"
+    )
+    bm25_tf_parser.add_argument(
+        "b", type=float, nargs="?", default=BM25_B, help="Tunable BM25 b parameter"
+    )
 
     args = parser.parse_args()
 
@@ -113,7 +118,9 @@ def main() -> None:
                 term_match_doc_count = len(index.get_documents(term))
                 idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
                 tf_idf = tf * idf
-                print(f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}")
+                print(
+                    f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}"
+                )
             except ValueError as e:
                 print(e)
 
@@ -126,8 +133,12 @@ def main() -> None:
             doc_id = args.doc_id
             term = args.term
             k1 = args.k1
-            bm25tf = bm25_tf_command(doc_id, term, k1)
-            print(f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25tf:.2f}")
+            b = args.b
+            bm25tf = bm25_tf_command(doc_id, term, k1, b)
+            if bm25tf > 0:
+                print(f"{bm25tf:.2f}")
+            else:
+                print("0.00")
 
         case _:
             parser.print_help()
@@ -135,3 +146,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
