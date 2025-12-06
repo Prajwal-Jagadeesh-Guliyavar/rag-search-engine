@@ -19,7 +19,8 @@ class InvertedIndex:
             self.index[token].add(doc_id)
 
     def get_documents(self, term: str) -> list[int]:
-        term = term.lower()
+        from .search_utils import stemmer # Import stemmer locally to avoid circular dependency
+        term = stemmer.stem(term.lower())
         if term not in self.index:
             return []
         
