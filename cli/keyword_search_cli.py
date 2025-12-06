@@ -21,6 +21,10 @@ def main() -> None:
     idf_parser = subparsers.add_parser("idf", help="Get inverse document frequency")
     idf_parser.add_argument("term", type=str, help="Term to get IDF for")
 
+    tfidf_parser = subparsers.add_parser("tfidf", help="Get TF-IDF score")
+    tfidf_parser.add_argument("doc_id", type=int, help="Document ID")
+    tfidf_parser.add_argument("term", type=str, help="Term to get TF-IDF for")
+
     args = parser.parse_args()
 
     match args.command:
@@ -76,10 +80,29 @@ def main() -> None:
 
             total_doc_count = len(index.docmap)
             term_match_doc_count = len(index.get_documents(term))
-            print(f"Total doc count: {total_doc_count}")
-            print(f"Term '{term}' match doc count: {term_match_doc_count}")
             idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
             print(f"Inverse document frequency of '{args.term}': {idf:.2f}")
+
+        case "tfidf":
+            doc_id = args.doc_id
+            term = args.term
+
+            try:
+                index = InvertedIndex()
+                index.load()
+            except FileNotFoundError as e:
+                print(e)
+                return
+
+            try:
+                tf = index.get_tf(doc_id, term)
+                total_doc_count = len(index.docmap)
+                term_match_doc_count = len(index.get_documents(term))
+                idf = math.log((total_doc_count + 1) / (term_match_doc_count + 1))
+                tf_idf = tf * idf
+                print(f"TF-IDF score of '{args.term}' in document '{args.doc_id}': {tf_idf:.2f}")
+            except ValueError as e:
+                print(e)
 
         case _:
             parser.print_help()
