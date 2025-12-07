@@ -5,4 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 # add the "sentence-transformers==5.1.0" down if you use NVDIA Cudas
-dependencies = ["nltk==3.9.1"]
+dependencies = [
+    "nltk==3.9.1",
+    "numpy>=2.3.5",
+]
