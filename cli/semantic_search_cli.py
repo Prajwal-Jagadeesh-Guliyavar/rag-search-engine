@@ -38,6 +38,9 @@ def main() -> None:
     chunk_parser.add_argument(
         "--chunk-size", type=int, default=200, help="Number of words per chunk"
     )
+    chunk_parser.add_argument(
+        "--overlap", type=int, default=0, help="Number of words to overlap"
+    )
 
     args = parser.parse_args()
 
@@ -47,11 +50,16 @@ def main() -> None:
         case "chunk":
             text = args.text
             chunk_size = args.chunk_size
+            overlap = args.overlap
             words = text.split()
-            chunks = [
-                " ".join(words[i : i + chunk_size])
-                for i in range(0, len(words), chunk_size)
-            ]
+            chunks = []
+            step = chunk_size - overlap
+            for i in range(0, len(words), step):
+                chunk = " ".join(words[i : i + chunk_size])
+                chunks.append(chunk)
+                if i + chunk_size >= len(words):
+                    break
+
             print(f"Chunking {len(text)} characters")
             for i, chunk in enumerate(chunks, 1):
                 print(f"{i}. {chunk}")
