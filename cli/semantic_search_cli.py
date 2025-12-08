@@ -1,4 +1,5 @@
 import argparse
+import re
 from lib.search_utils import load_movies
 from lib.semantic_search import (
     SemanticSearch,
@@ -42,6 +43,20 @@ def main() -> None:
         "--overlap", type=int, default=0, help="Number of words to overlap"
     )
 
+    semantic_chunk_parser = subparsers.add_parser(
+        "semantic_chunk", help="Chunk text by sentences"
+    )
+    semantic_chunk_parser.add_argument("text", type=str, help="Text to chunk")
+    semantic_chunk_parser.add_argument(
+        "--max-chunk-size",
+        type=int,
+        default=4,
+        help="Maximum number of sentences per chunk",
+    )
+    semantic_chunk_parser.add_argument(
+        "--overlap", type=int, default=0, help="Number of sentences to overlap"
+    )
+
     args = parser.parse_args()
 
     match args.command:
@@ -61,6 +76,23 @@ def main() -> None:
                     break
 
             print(f"Chunking {len(text)} characters")
+            for i, chunk in enumerate(chunks, 1):
+                print(f"{i}. {chunk}")
+
+        case "semantic_chunk":
+            text = args.text
+            max_chunk_size = args.max_chunk_size
+            overlap = args.overlap
+            sentences = re.split(r"(?<=[.!?])\s+", text)
+            chunks = []
+            step = max_chunk_size - overlap
+            for i in range(0, len(sentences), step):
+                chunk = " ".join(sentences[i : i + max_chunk_size])
+                chunks.append(chunk)
+                if i + max_chunk_size >= len(sentences):
+                    break
+
+            print(f"Semantically chunking {len(text)} characters")
             for i, chunk in enumerate(chunks, 1):
                 print(f"{i}. {chunk}")
 
