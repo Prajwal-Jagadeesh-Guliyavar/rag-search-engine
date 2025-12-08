@@ -33,11 +33,28 @@ def main() -> None:
         "--limit", type=int, default=5, help="Number of results to return"
     )
 
+    chunk_parser = subparsers.add_parser("chunk", help="Chunk a string")
+    chunk_parser.add_argument("text", type=str, help="Text to chunk")
+    chunk_parser.add_argument(
+        "--chunk-size", type=int, default=200, help="Number of words per chunk"
+    )
+
     args = parser.parse_args()
 
     match args.command:
         case "verify":
             verify_model()
+        case "chunk":
+            text = args.text
+            chunk_size = args.chunk_size
+            words = text.split()
+            chunks = [
+                " ".join(words[i : i + chunk_size])
+                for i in range(0, len(words), chunk_size)
+            ]
+            print(f"Chunking {len(text)} characters")
+            for i, chunk in enumerate(chunks, 1):
+                print(f"{i}. {chunk}")
 
         case "embed_text":
             embed_text(args.text)
