@@ -13,6 +13,7 @@ from .search_utils import (
     CHUNK_EMBEDDINGS_PATH,
     CHUNK_METADATA_PATH,
     MOVIE_EMBEDDINGS_PATH,
+    format_search_result,
 )
 
 
@@ -198,10 +199,56 @@ def semantic_chunk_text(text :str, max_chunk_size : int = DEFAULT_SEMANTIC_CHUNK
 
 
 class ChunkedSemanticSearch(SemanticSearch):
-    def __init__(self, model_name="all-MiniLM-L6-v2")-> None:
+    def __init__(self, model_name="all-MiniLM-L6-v2") -> None:
         super().__init__(model_name)
         self.chunk_embeddings = None
         self.chunk_metadata = None
+
+    def search_chunks(self, query: str, limit: int = 10):
+        if self.chunk_embeddings is None:
+            raise ValueError(
+                "No chunk embeddings loaded. Call `load_or_create_chunk_embeddings` first."
+            )
+
+        query_embedding = self.generate_embedding(query)
+        chunk_scores = []
+        for i, chunk_embedding in enumerate(self.chunk_embeddings):
+            similarity = cosine_similarity(query_embedding, chunk_embedding)
+            chunk_scores.append(
+                {
+                    "chunk_idx": self.chunk_metadata[i]["chunk_idx"],
+                    "movie_idx": self.chunk_metadata[i]["movie_idx"],
+                    "score": similarity,
+                }
+            )
+
+        movie_scores = {}
+        for chunk_score in chunk_scores:
+            movie_idx = chunk_score["movie_idx"]
+            score = chunk_score["score"]
+            if movie_idx not in movie_scores or score > movie_scores[movie_idx]["score"]:
+                movie_scores[movie_idx] = {
+                    "score": score,
+                    "chunk_idx": chunk_score["chunk_idx"],
+                }
+        
+        sorted_movies = sorted(
+            movie_scores.items(), key=lambda item: item[1]["score"], reverse=True
+        )
+
+        results = []
+        for movie_idx, score_data in sorted_movies[:limit]:
+            doc = self.documents[movie_idx]
+            results.append(
+                format_search_result(
+                    doc_id=doc["id"],
+                    title=doc["title"],
+                    document=doc["description"][:100],
+                    score=score_data["score"],
+                    metadata={"chunk_idx": score_data["chunk_idx"]},
+                )
+            )
+        return results
 
     def build_chunk_embeddings(self, documents : list[dict]) -> np.ndarray:
         self.documents = documents
