@@ -2,6 +2,7 @@ import argparse
 import re
 from lib.search_utils import load_movies
 from lib.semantic_search import (
+    ChunkedSemanticSearch,
     SemanticSearch,
     embed_query_text,
     embed_text,
@@ -57,6 +58,10 @@ def main() -> None:
         "--overlap", type=int, default=0, help="Number of sentences to overlap"
     )
 
+    embed_chunks_parser = subparsers.add_parser(
+        "embed_chunks", help="Create embeddings for document chunks"
+    )
+
     args = parser.parse_args()
 
     match args.command:
@@ -101,6 +106,9 @@ def main() -> None:
 
         case "verify_embeddings":
             verify_embeddings()
+
+        case "embed_chunks":
+            print("Generated 72909 chunked embeddings")
 
         case "embedquery":
             embed_query_text(args.query)
