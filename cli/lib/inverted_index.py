@@ -13,6 +13,7 @@ class InvertedIndex:
         self.docmap = {}
         self.term_frequencies = {}
         self.doc_lengths = {}
+        self.index_path = os.path.join(CACHE_DIR, "index.pkl")
         self.doc_lengths_path = os.path.join(CACHE_DIR, "doc_lengths.pkl")
 
     def __add_document(self, doc_id: int, text: str):

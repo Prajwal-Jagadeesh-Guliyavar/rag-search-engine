@@ -127,6 +127,54 @@ class ChunkedSemanticSearch(SemanticSearch):
 
         return self.chunk_embeddings
 
+    def search_chunks(self, query: str, limit: int = 5):
+        if self.chunk_embeddings is None:
+            raise ValueError(
+                "No chunk embeddings loaded. Call `load_or_create_chunk_embeddings` first."
+            )
+
+        query_embedding = self.generate_embedding(query)
+        chunk_scores = []
+        for i, chunk_embedding in enumerate(self.chunk_embeddings):
+            similarity = cosine_similarity(query_embedding, chunk_embedding)
+            chunk_scores.append(
+                {
+                    "chunk_idx": self.chunk_metadata[i]["chunk_idx"],
+                    "movie_idx": self.chunk_metadata[i]["movie_idx"],
+                    "score": similarity,
+                }
+            )
+
+        movie_scores = {}
+        for chunk_score in chunk_scores:
+            movie_idx = chunk_score["movie_idx"]
+            score = chunk_score["score"]
+            if movie_idx not in movie_scores or score > movie_scores[movie_idx]["score"]:
+                movie_scores[movie_idx] = {
+                    "score": score,
+                    "chunk_idx": chunk_score["chunk_idx"],
+                }
+        
+        sorted_movies = sorted(
+            movie_scores.items(), key=lambda item: item[1]["score"], reverse=True
+        )
+
+        results = []
+        for movie_idx, score_data in sorted_movies[:limit]:
+            doc = self.documents[movie_idx]
+            results.append(
+                {
+                    "id": doc["id"],
+                    "score": score_data["score"],
+                    "title": doc["title"],
+                    "description": doc["description"],
+                }
+            )
+        return results
+
+    def search(self, query: str, limit: int = 5):
+        return self.search_chunks(query, limit)
+
     def load_or_create_chunk_embeddings(self, documents: list[dict]) -> np.ndarray:
         self.documents = documents
         for doc in documents:
