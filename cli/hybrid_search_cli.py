@@ -3,11 +3,36 @@ import argparse
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
-    parser.add_subparsers(dest="command", help="Available commands")
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    normalize_parser = subparsers.add_parser(
+        "normalize", help="Normalize a list of scores using min-max normalization"
+    )
+    normalize_parser.add_argument(
+        "scores", type=float, nargs="*", default=[], help="List of scores to normalize"
+    )
 
     args = parser.parse_args()
 
     match args.command:
+        case "normalize":
+            scores = args.scores
+            if not scores:
+                return
+
+            min_score = min(scores)
+            max_score = max(scores)
+
+            if min_score == max_score:
+                for _ in scores:
+                    print(f"* {1.0:.4f}")
+            else:
+                normalized_scores = [
+                    (score - min_score) / (max_score - min_score) for score in scores
+                ]
+                for score in normalized_scores:
+                    print(f"* {score:.4f}")
+
         case _:
             parser.print_help()
 
