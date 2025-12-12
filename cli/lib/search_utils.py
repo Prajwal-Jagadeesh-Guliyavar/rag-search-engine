@@ -42,3 +42,7 @@ def tokenize_text(text: str) -> list[str]:
             stemmed_token = stemmer.stem(token)
             valid_tokens.append(stemmed_token)
     return valid_tokens
+
+
+def rrf_score(rank: int, k: int = 60) -> float:
+    return 1 / (k + rank)

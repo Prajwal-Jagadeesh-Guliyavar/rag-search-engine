@@ -78,4 +78,45 @@ class HybridSearch:
 
         return sorted_results[:limit]
     def rrf_search(self, query, k, limit=10):
-        raise NotImplementedError("RRF hybrid search is not implemented yet. ")
+        bm25_results = self._bm25_search(query, limit=limit * 500)
+        semantic_results = self.semantic_search.search(query, limit=limit * 500)
+
+        combined_results = {}
+
+        for i, (doc, _) in enumerate(bm25_results):
+            doc_id = doc["id"]
+            if doc_id not in combined_results:
+                combined_results[doc_id] = {
+                    "doc": doc,
+                    "bm25_rank": None,
+                    "semantic_rank": None,
+                    "rrf_score": 0,
+                }
+            combined_results[doc_id]["bm25_rank"] = i + 1
+
+        for i, result in enumerate(semantic_results):
+            doc_id = result["id"]
+            if doc_id not in combined_results:
+                combined_results[doc_id] = {
+                    "doc": self.semantic_search.document_map[doc_id],
+                    "bm25_rank": None,
+                    "semantic_rank": None,
+                    "rrf_score": 0,
+                }
+            combined_results[doc_id]["semantic_rank"] = i + 1
+        
+        from .search_utils import rrf_score
+
+        for doc_id, ranks in combined_results.items():
+            score = 0
+            if ranks["bm25_rank"] is not None:
+                score += rrf_score(ranks["bm25_rank"], k)
+            if ranks["semantic_rank"] is not None:
+                score += rrf_score(ranks["semantic_rank"], k)
+            ranks["rrf_score"] = score
+        
+        sorted_results = sorted(
+            combined_results.values(), key=lambda x: x["rrf_score"], reverse=True
+        )
+
+        return sorted_results[:limit]
