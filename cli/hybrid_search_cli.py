@@ -2,16 +2,16 @@ import argparse
 
 from lib.hybrid_search import (
     normalize_scores,
+    rrf_search_command,
     weighted_search_command,
-    rrf_search_command
 )
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hybrid Search CLI")
-
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
-    #normalizing the bm25 and cosine scores
+    #Normalizing the score
     normalize_parser = subparsers.add_parser(
         "normalize", help="Normalize a list of scores"
     )
@@ -19,19 +19,22 @@ def main() -> None:
         "scores", nargs="+", type=float, help="List of scores to normalize"
     )
 
-    #Weighted Search
+    #Weighted score
     weighted_parser = subparsers.add_parser(
         "weighted-search", help="Perform weighted hybrid search"
     )
     weighted_parser.add_argument("query", type=str, help="Search query")
     weighted_parser.add_argument(
-        "--alpha", type=float, default=0.5, help="Weight for BM25 vs semantic (0=all semantic, 1=all BM25, default=0.5)",
-        )
+        "--alpha",
+        type=float,
+        default=0.5,
+        help="Weight for BM25 vs semantic (0=all semantic, 1=all BM25, default=0.5)",
+    )
     weighted_parser.add_argument(
         "--limit", type=int, default=5, help="Number of results to return (default=5)"
     )
 
-    #Reciprocal Rank Fusion
+    #Reciprocal Rank Fusion - rrf
     rrf_parser = subparsers.add_parser(
         "rrf-search", help="Perform Reciprocal Rank Fusion search"
     )
@@ -42,9 +45,12 @@ def main() -> None:
         default=60,
         help="RRF k parameter controlling weight distribution (default=60)",
     )
-
-    #Enhancing the Query using LLM
-    rrf_parser.add_argument("--enhance", type=str, choices=["spell"], help="Query enhancement method",)
+    rrf_parser.add_argument(
+        "--enhance",
+        type=str,
+        choices=["spell"],
+        help="Query enhancement method",
+    )
     rrf_parser.add_argument(
         "--limit", type=int, default=5, help="Number of results to return (default=5)"
     )
@@ -56,7 +62,6 @@ def main() -> None:
             normalized = normalize_scores(args.scores)
             for score in normalized:
                 print(f"* {score:.4f}")
-
         case "weighted-search":
             result = weighted_search_command(args.query, args.alpha, args.limit)
 
@@ -78,10 +83,11 @@ def main() -> None:
                 print()
         case "rrf-search":
             result = rrf_search_command(args.query, args.k, args.enhance, args.limit)
-            print(f"DEBUG_RESULT_DICT: {result}")
 
-            if result.get("enhanced_query"):
-                print(f"Enhanced query ({result.get('enhance_method', 'N/A')}): '{result.get('original_query', 'N/A')}' -> '{result.get('enhanced_query', 'N/A')}'")
+            if result["enhanced_query"]:
+                print(
+                    f"Enhanced query ({result['enhance_method']}): '{result['original_query']}' -> '{result['enhanced_query']}'\n"
+                )
 
             print(
                 f"Reciprocal Rank Fusion Results for '{result['query']}' (k={result['k']}):"
@@ -100,7 +106,6 @@ def main() -> None:
                     print(f"   {', '.join(ranks)}")
                 print(f"   {res['document'][:100]}...")
                 print()
-
         case _:
             parser.print_help()
 
