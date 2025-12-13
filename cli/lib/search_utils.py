@@ -2,6 +2,8 @@ import json
 import os
 import string
 from nltk.stem import PorterStemmer
+from dotenv import load_dotenv
+import google.generativeai as genai
 
 DEFAULT_SEARCH_LIMIT = 5
 BM25_K1 = 1.5
@@ -46,3 +48,31 @@ def tokenize_text(text: str) -> list[str]:
 
 def rrf_score(rank: int, k: int = 60) -> float:
     return 1 / (k + rank)
+
+
+def enhance_query_with_gemini(query: str, method: str) -> str:
+    """
+    Enhance movie search query using Gemini API to fix spelling errors.
+
+    Args:
+        query: Original search query
+        method: Enhancement method (unused in current implementation)
+
+    Returns:
+        Corrected query with spelling errors fixed
+    """
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    genai.configure(api_key=api_key)
+
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-pro")
+    model = genai.GenerativeModel(model_name)
+
+    prompt = f"""Fix any spelling errors in this movie search query.
+Only correct obvious typos. Don't change correctly spelled words.
+Query: "{query}"
+If no errors, return the original query.
+Corrected:"""
+
+    response = model.generate_content(prompt)
+    return response.text.strip()

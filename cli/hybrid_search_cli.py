@@ -33,6 +33,12 @@ def main() -> None:
     rrf_search_parser.add_argument(
         "--limit", type=int, default=5, help="Number of results to return"
     )
+    rrf_search_parser.add_argument(
+        "--enhance",
+        type=str,
+        choices=["spell"],
+        help="Query enhancement method",
+    )
 
     args = parser.parse_args()
 
@@ -71,10 +77,18 @@ def main() -> None:
         
         case "rrf-search":
             from lib.hybrid_search import HybridSearch
-            from lib.search_utils import load_movies
+            from lib.search_utils import load_movies, enhance_query_with_gemini
+
+            query = args.query
+            if args.enhance:
+                enhanced_query = enhance_query_with_gemini(query, args.enhance)
+                print(
+                    f"Enhanced query ({args.enhance}): '{query}' -> '{enhanced_query}'\n"
+                )
+                query = enhanced_query
 
             search = HybridSearch(load_movies())
-            results = search.rrf_search(args.query, args.k, args.limit)
+            results = search.rrf_search(query, args.k, args.limit)
             for i, result in enumerate(results, 1):
                 print(f"{i}. {result['doc']['title']}")
                 print(f"   RRF Score: {result['rrf_score']:.3f}")
