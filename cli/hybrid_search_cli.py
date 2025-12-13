@@ -78,11 +78,10 @@ def main() -> None:
                 print()
         case "rrf-search":
             result = rrf_search_command(args.query, args.k, args.enhance, args.limit)
+            print(f"DEBUG_RESULT_DICT: {result}")
 
-            if result["enhanced_query"]:
-                print(
-                    f"Enhanced query ({result['enhance_method']}): '{result['original_query']}' -> '{result['enhanced_query']}'\n"
-                )
+            if result.get("enhanced_query"):
+                print(f"Enhanced query ({result.get('enhance_method', 'N/A')}): '{result.get('original_query', 'N/A')}' -> '{result.get('enhanced_query', 'N/A')}'")
 
             print(
                 f"Reciprocal Rank Fusion Results for '{result['query']}' (k={result['k']}):"

@@ -212,7 +212,7 @@ def rrf_search_command( query: str, k: int = RRF_K, enhance: Optional[str] = Non
         enhanced_query = enhance_query(query, method=enhance)
 
     search_limit = limit
-    results = searcher.rrf_search(query, k, search_limit)
+    results = searcher.rrf_search(enhanced_query if enhanced_query else query, k, search_limit)
 
     return {
         "original_query": original_query,
