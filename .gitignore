@@ -9,3 +9,4 @@ data/
 cache/
 # Virtual environments
 .venv
+.env
