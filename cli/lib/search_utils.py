@@ -87,6 +87,58 @@ Examples:
 - "scary movie with bear from few years ago" -> "bear horror movie 2015-2020"
 
 Rewritten query:"""
+def enhance_query_with_gemini(query: str, method: str) -> str:
+    """
+    Enhance movie search query using Gemini API based on the specified method.
+
+    Args:
+        query: Original search query
+        method: Enhancement method ('spell', 'rewrite', or 'expand')
+
+    Returns:
+        Enhanced query
+    """
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    genai.configure(api_key=api_key)
+
+    model_name = os.environ.get("GEMINI_MODEL", "gemini-pro")
+    model = genai.GenerativeModel(model_name)
+
+    if method == "rewrite":
+        prompt = f"""Rewrite this movie search query to be more specific and searchable.
+
+Original: "{query}"
+
+Consider:
+- Common movie knowledge (famous actors, popular films)
+- Genre conventions (horror = scary, animation = cartoon)
+- Keep it concise (under 10 words)
+- It should be a google style search query that's very specific
+- Don't use boolean logic
+
+Examples:
+
+- "that bear movie where leo gets attacked" -> "The Revenant Leonardo DiCaprio bear attack"
+- "movie about bear in london with marmalade" -> "Paddington London marmalade"
+- "scary movie with bear from few years ago" -> "bear horror movie 2015-2020"
+
+Rewritten query:"""
+    elif method == "expand":
+        prompt = f"""Expand this movie search query with related terms.
+
+Add synonyms and related concepts that might appear in movie descriptions.
+Keep expansions relevant and focused.
+This will be appended to the original query.
+
+Examples:
+
+- "scary bear movie" -> "scary horror grizzly bear movie terrifying film"
+- "action movie with bear" -> "action thriller bear chase fight adventure"
+- "comedy with bear" -> "comedy funny bear humor lighthearted"
+
+Query: "{query}"
+"""
     elif method == "spell":
         prompt = f"""Fix any spelling errors in this movie search query.
 Only correct obvious typos. Don't change correctly spelled words.
@@ -99,7 +151,14 @@ Corrected:"""
 
     try:
         response = model.generate_content(prompt)
-        return response.text.strip()
+        enhanced_text = response.text.strip()
+        
+        # For "expand", append the original query to the expanded terms
+        if method == "expand":
+            return f"{query} {enhanced_text}"
+        else:
+            return enhanced_text
+            
     except Exception as e:
         print(f"Error calling Gemini API: {e}")
         return query # Return original query in case of API error
