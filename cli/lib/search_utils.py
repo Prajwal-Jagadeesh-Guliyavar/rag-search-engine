@@ -12,6 +12,8 @@ BM25_K1 = 1.5
 BM25_B = 0.75
 
 RRF_K=60
+#i just wanna reduce the cost so letme keep it low 5 is usual value
+SEARCH_MULTIPLIER = 3
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 DATA_PATH = os.path.join(PROJECT_ROOT, "data", "movies.json")
