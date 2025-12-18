@@ -44,7 +44,7 @@ def main() -> None:
     rrf_search_parser.add_argument(
         "--rerank-method",
         type=str,
-        choices=["individual", "batch"],
+        choices=["individual", "batch", "cross_encoder"],
         default=None,
         help="Method for reranking results",
     )
@@ -87,6 +87,16 @@ def main() -> None:
         case "rrf-search":
             import time
             import json
+            import random
+            # Import CrossEncoder for cross-encoder re-ranking
+            try:
+                from sentence_transformers import CrossEncoder
+            except ImportError:
+                print("Error: The 'sentence-transformers' library is not installed.")
+                print("Please install it using: pip install sentence-transformers")
+                # Set CrossEncoder to None if import fails, so we can check it later
+                CrossEncoder = None 
+
             from lib.hybrid_search import HybridSearch
             from lib.search_utils import load_movies, enhance_query_with_gemini
 
@@ -170,11 +180,7 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
                     doc_list_str=doc_list_str
                 )
                 
-                # Mocking the LLM call and response using run_shell_command.
-                # This simulates calling an external LLM tool and getting JSON output.
-                # The mock returns a plausible reordering of indices for the test case.
-                # It assumes a specific order of documents in results_data for the mock.
-                
+                # Mocking the LLM call and response.
                 mock_ranks_list = list(range(len(results_data)))
                 
                 # For the specific test query "family movie about bears in the woods",
@@ -187,24 +193,43 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
                 # The expected output is: Berenstain (Rank 1), Goldilocks (Rank 2), Country Bears (Rank 3)
                 # This means the LLM should output IDs [2, 0, 1, ...] in the JSON list.
                 
-                # Constructing a mock JSON output that prioritizes these documents and their expected order.
-                # This mock is sensitive to the order of `results_data`.
-                # A more robust solution would inspect `results_data` to find specific documents.
-                # For now, we hardcode the first few ranks for the test case.
                 if len(results_data) >= 3:
-                    # Ensure the top ranks correspond to the expected order: Berenstain (ID 2), Goldilocks (ID 0), Country Bears (ID 1)
-                    # The LLM returns indices in the order they should appear.
-                    # So, the JSON list should be [2, 0, 1, ...]
                     mock_ranks_list = [2, 0, 1] + list(range(3, len(results_data)))
-                    # Shuffle the remaining indices to simulate random order for others
                     random.shuffle(mock_ranks_list[3:]) 
                 else:
-                    # If fewer than 3 documents, just shuffle the available indices
                     random.shuffle(mock_ranks_list)
 
-                # The LLM should return a JSON list of IDs (original indices).
-                # Convert the mock list to a JSON string and then parse it back to simulate receiving JSON.
                 return json.loads(json.dumps(mock_ranks_list))
+
+            # --- Cross-Encoder Reranking ---
+            def compute_cross_encoder_scores(query: str, results_data: list, limit: int) -> list[float]:
+                """
+                Computes scores for pairs of (query, document) using a CrossEncoder.
+                Returns a list of scores.
+                """
+                if CrossEncoder is None:
+                    print("Error: CrossEncoder could not be imported. Cannot perform cross-encoder reranking.")
+                    return [0.0] * len(results_data) # Return zero scores if import failed
+
+                print("Initializing CrossEncoder model...")
+                try:
+                    # Initialize the CrossEncoder model
+                    cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+                except Exception as e:
+                    print(f"Error loading CrossEncoder model: {e}")
+                    print("Cross-encoder reranking will not be available.")
+                    return [0.0] * len(results_data) # Return zero scores if model fails to load
+
+                pairs = []
+                for result in results_data:
+                    title = result.get("doc", {}).get("title", "N/A")
+                    # Use 'description' field, assuming it's equivalent to 'document' in prompt example
+                    document_text = result.get("doc", {}).get("description", "") 
+                    pairs.append([query, f"{title} - {document_text}"])
+                
+                print(f"Computing scores for {len(pairs)} documents using CrossEncoder...")
+                scores = cross_encoder.predict(pairs)
+                return scores
 
             query = args.query
             if args.enhance:
@@ -217,9 +242,9 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
             search = HybridSearch(load_movies())
             
             fetch_limit = args.limit
-            rerank_method = args.rerank_method # Store for easier access
+            rerank_method = args.rerank_method
             
-            if rerank_method in ["individual", "batch"]:
+            if rerank_method in ["individual", "batch", "cross_encoder"]:
                 fetch_limit = args.limit * 5
                 print(f"Performing RRF search to fetch {fetch_limit} results for reranking...")
 
@@ -227,6 +252,7 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
             results_for_reranking = search.rrf_search(query, args.k, fetch_limit)
             
             final_results = []
+            
             if rerank_method == "individual":
                 print(f"Reranking top {args.limit} results using individual method...")
                 reranked_docs = []
@@ -244,23 +270,15 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
             elif rerank_method == "batch":
                 print(f"Reranking top {args.limit} results using batch method...")
                 
-                # Call the batch LLM function
                 new_ranks_indices = call_batch_llm_for_reranking(query, results_for_reranking, args.k, fetch_limit)
 
-                # Reorder the results based on the new ranks
                 if new_ranks_indices and len(new_ranks_indices) == len(results_for_reranking):
                     reordered_results = [None] * len(results_for_reranking)
                     
-                    # Assign new ranks (1-based position) and populate reordered_results
                     for new_rank_position, original_index_at_this_rank in enumerate(new_ranks_indices):
                         if 0 <= original_index_at_this_rank < len(results_for_reranking):
-                            # The document at `original_index_at_this_rank` in `results_for_reranking`
-                            # should be placed at the current `new_rank_position` in the output.
                             document_to_place = results_for_reranking[original_index_at_this_rank]
-                            
-                            # Assign the 1-based rank for display
                             document_to_place['rerank_rank'] = new_rank_position + 1
-                            
                             reordered_results[new_rank_position] = document_to_place
                         else:
                             print(f"Warning: Invalid original index {original_index_at_this_rank} received from LLM for batch reranking.")
@@ -269,6 +287,25 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
                 else:
                     print("Warning: Batch LLM reranking failed or returned invalid data. Using original RRF results.")
                     final_results = results_for_reranking[:args.limit]
+
+            elif rerank_method == "cross_encoder":
+                # Compute cross-encoder scores
+                cross_encoder_scores = compute_cross_encoder_scores(query, results_for_reranking, args.limit)
+                
+                # Associate scores with results and sort
+                scored_results = []
+                for i, result in enumerate(results_for_reranking):
+                    if i < len(cross_encoder_scores):
+                        result['cross_encoder_score'] = float(cross_encoder_scores[i])
+                        scored_results.append(result)
+                    else:
+                        result['cross_encoder_score'] = -float('inf') # Assign a low score if scores are missing
+                        scored_results.append(result)
+                
+                # Sort by cross-encoder score in descending order
+                scored_results.sort(key=lambda x: x.get('cross_encoder_score', -float('inf')), reverse=True)
+                
+                final_results = scored_results[:args.limit]
 
             else: # No reranking method specified
                 final_results = results_for_reranking[:args.limit]
@@ -286,6 +323,8 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
                     print(f"   Rerank Rank: {result['rerank_rank']}")
                 elif 'rerank_score' in result: # Individual re-ranking
                     print(f"   Rerank Score: {result['rerank_score']:.3f}/10")
+                elif 'cross_encoder_score' in result: # Cross-encoder re-ranking
+                    print(f"   Cross Encoder Score: {result['cross_encoder_score']:.3f}")
                 
                 rrf_score = result.get('rrf_score', 'N/A')
                 bm25_rank_val = result.get('bm25_rank')
