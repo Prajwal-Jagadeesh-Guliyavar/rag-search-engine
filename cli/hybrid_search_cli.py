@@ -231,14 +231,24 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
                 scores = cross_encoder.predict(pairs)
                 return scores
 
-            query = args.query
-            if args.enhance:
-                enhanced_query = enhance_query_with_gemini(query, args.enhance)
-                print(
-                    f"Enhanced query ({args.enhance}): '{query}' -> '{enhanced_query}'\n"
-                )
-                query = enhanced_query
+            # --- Start of Logging ---
+            original_query = args.query
+            print(f"\n--- DEBUG LOGGING: Original Query ---")
+            print(f"Original Query: {original_query}")
+            
+            query_to_use = original_query # Initialize query_to_use
 
+            if args.enhance:
+                print(f"\n--- DEBUG LOGGING: Query Enhancement ---")
+                print(f"Enhancement method: {args.enhance}")
+                enhanced_query = enhance_query_with_gemini(original_query, args.enhance)
+                print(f"Enhanced Query: {enhanced_query}")
+                query_to_use = enhanced_query
+            else:
+                print(f"\n--- DEBUG LOGGING: Query Enhancement Skipped ---")
+                print(f"Query remains: {query_to_use}")
+
+            print(f"\n--- DEBUG LOGGING: RRF Search ---")
             search = HybridSearch(load_movies())
             
             fetch_limit = args.limit
@@ -247,17 +257,28 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
             if rerank_method in ["individual", "batch", "cross_encoder"]:
                 fetch_limit = args.limit * 5
                 print(f"Performing RRF search to fetch {fetch_limit} results for reranking...")
-
-            # Fetch initial results. Assumes search.rrf_search can take fetch_limit.
-            results_for_reranking = search.rrf_search(query, args.k, fetch_limit)
+            else:
+                print(f"Performing RRF search to fetch {fetch_limit} results...")
+                
+            results_for_reranking = search.rrf_search(query_to_use, args.k, fetch_limit)
             
+            print(f"\n--- DEBUG LOGGING: RRF Search Initial Results ---")
+            print(f"Retrieved {len(results_for_reranking)} documents from RRF search.")
+            print("Initial RRF Results (first 5 items):")
+            # Log only a few items to avoid excessive output, or all if few
+            print(json.dumps(results_for_reranking[:5], indent=2)) 
+            if len(results_for_reranking) > 5:
+                print(f"... and {len(results_for_reranking) - 5} more.")
+            print("-" * 40) # Separator for clarity
+
             final_results = []
             
             if rerank_method == "individual":
-                print(f"Reranking top {args.limit} results using individual method...")
+                print(f"\n--- DEBUG LOGGING: Individual Reranking ---")
+                print(f"Reranking top {args.limit} results using individual LLM calls...")
                 reranked_docs = []
                 for i, result in enumerate(results_for_reranking):
-                    llm_score = call_llm_for_reranking(query, result, args.k, fetch_limit)
+                    llm_score = call_llm_for_reranking(query_to_use, result, args.k, fetch_limit)
                     result['rerank_score'] = llm_score # Store LLM score
                     reranked_docs.append(result)
                     
@@ -266,11 +287,14 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
                 
                 reranked_docs.sort(key=lambda x: x.get('rerank_score', 0.0), reverse=True)
                 final_results = reranked_docs[:args.limit]
+                print(f"Individual reranking complete. Top {args.limit} selected.")
+
 
             elif rerank_method == "batch":
-                print(f"Reranking top {args.limit} results using batch method...")
+                print(f"\n--- DEBUG LOGGING: Batch Reranking ---")
+                print(f"Reranking top {args.limit} results using batch LLM calls...")
                 
-                new_ranks_indices = call_batch_llm_for_reranking(query, results_for_reranking, args.k, fetch_limit)
+                new_ranks_indices = call_batch_llm_for_reranking(query_to_use, results_for_reranking, args.k, fetch_limit)
 
                 if new_ranks_indices and len(new_ranks_indices) == len(results_for_reranking):
                     reordered_results = [None] * len(results_for_reranking)
@@ -284,13 +308,15 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
                             print(f"Warning: Invalid original index {original_index_at_this_rank} received from LLM for batch reranking.")
 
                     final_results = reordered_results[:args.limit]
+                    print(f"Batch reranking complete. Top {args.limit} selected.")
                 else:
                     print("Warning: Batch LLM reranking failed or returned invalid data. Using original RRF results.")
                     final_results = results_for_reranking[:args.limit]
 
             elif rerank_method == "cross_encoder":
+                print(f"\n--- DEBUG LOGGING: Cross-Encoder Reranking ---")
                 # Compute cross-encoder scores
-                cross_encoder_scores = compute_cross_encoder_scores(query, results_for_reranking, args.limit)
+                cross_encoder_scores = compute_cross_encoder_scores(query_to_use, results_for_reranking, args.limit)
                 
                 # Associate scores with results and sort
                 scored_results = []
@@ -306,12 +332,24 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
                 scored_results.sort(key=lambda x: x.get('cross_encoder_score', -float('inf')), reverse=True)
                 
                 final_results = scored_results[:args.limit]
+                print(f"Cross-encoder reranking complete. Top {args.limit} selected.")
 
             else: # No reranking method specified
+                print(f"\n--- DEBUG LOGGING: No Reranking Applied ---")
                 final_results = results_for_reranking[:args.limit]
+                print(f"Selected top {args.limit} from initial RRF results.")
 
-            # Print the final results
-            print(f"Reciprocal Rank Fusion Results for '{query}' (k={args.k}):")
+
+            # --- Log Final Results ---
+            print(f"\n--- DEBUG LOGGING: Final Results ---")
+            print(f"Final Results (top {args.limit} after processing):")
+            print(f"Total final results: {len(final_results)}")
+            print(json.dumps(final_results, indent=2))
+            print("-" * 40) # Separator for clarity
+
+
+            # Print the final results (as before)
+            print(f"\nReciprocal Rank Fusion Results for '{query_to_use}' (k={args.k}):") # Use query_to_use here
 
             for i, result in enumerate(final_results, 1):
                 doc_data = result.get('doc', {})
@@ -344,4 +382,3 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
 
 if __name__ == "__main__":
     main()
-
