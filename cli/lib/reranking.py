@@ -3,6 +3,7 @@ import json
 from time import sleep
 from dotenv import load_dotenv
 import google.generativeai as genai
+from sentence_transformers import CrossEncoder
 
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")
@@ -10,6 +11,8 @@ genai.configure(api_key=api_key)
 model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 model = genai.GenerativeModel(model_name)
+
+cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
 
 def llm_rerank_individual(query: str, documents: list[dict], limit: int)-> list[dict]:
     scored_docs = []
@@ -76,10 +79,26 @@ Return ONLY the IDs in order of relevance (best match first). Return a valid JSO
             reranked.append({**doc_map[doc_id], "batch_rank": i + 1})
 
 
+def cross_encoder_rerank(query: str, documents: list[dict], limit: int = 5) -> list[dict]:
+    pairs = []
+    for doc in documents:
+        pairs.append([query, f"{doc.get('title', '')} - {doc.get('document', '')}"])
+
+    scores = cross_encoder.predict(pairs)
+
+    for doc, score in zip(documents, scores):
+        doc["crossencoder_score"] = float(score)
+
+    documents.sort(key=lambda x: x["crossencoder_score"], reverse=True)
+    return documents[:limit]
+
+
 def rerank(query: str, documents: list[dict], method: str="batch", limit:int=5) -> list[dict]:
     if method == "individual":
         return llm_rerank_individual(query, documents, limit)
     if method == "batch":
         return llm_rank_batch(query, documents, limit)
+    if method == "cross_encoder":
+        return cross_encoder_rerank(query, documents, limit)
     else :
         return documents[:limit]
