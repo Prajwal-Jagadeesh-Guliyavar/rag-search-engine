@@ -12,6 +12,7 @@ from .search_utils import (
     load_movies,
 )
 from .semantic_search import ChunkedSemanticSearch
+import logging
 
 
 
@@ -214,9 +215,11 @@ def rrf_search_command(
     searcher = HybridSearch(movies)
 
     original_query = query
+    logging.debug(f"Original Query: {original_query}")
     enhanced_query = None
     if enhance:
         enhanced_query = enhance_query(query, method=enhance)
+        logging.debug(f"Enhanced Query: {enhanced_query}")
         query = enhanced_query
 
     if rerank_method:
@@ -225,10 +228,12 @@ def rrf_search_command(
         search_limit = limit
 
     results = searcher.rrf_search(query, k, search_limit)
+    logging.debug(f"RRF Search Results (before reranking): {results}")
 
     reranked = False
     if rerank_method:
         results = rerank(query, results, method=rerank_method, limit=limit)
+        logging.debug(f"Final Re-ranked Results: {results}")
         reranked = True
 
     return {

@@ -1,10 +1,13 @@
 import argparse
+import logging
 
 from lib.hybrid_search import (
     normalize_scores,
     rrf_search_command,
     weighted_search_command,
 )
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 def main() -> None:
