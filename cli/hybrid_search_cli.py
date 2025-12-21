@@ -63,6 +63,11 @@ def main() -> None:
     rrf_parser.add_argument(
         "--limit", type=int, default=5, help="Number of results to return (default=5)"
     )
+    rrf_parser.add_argument( # <-- Added flag
+        "--evaluate",
+        action="store_true",
+        help="Evaluate search results using an LLM.",
+    )
 
     args = parser.parse_args()
 
