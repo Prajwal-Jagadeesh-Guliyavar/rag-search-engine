@@ -24,6 +24,19 @@ def main():
     parser = argparse.ArgumentParser(description="Retrieval Augmented Generation CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
+    # New parser for summarize command
+    summarize_parser = subparsers.add_parser(
+        "summarize", help="Synthesize search results into a summary"
+    )
+    summarize_parser.add_argument("query", type=str, help="Search query for summarization")
+    summarize_parser.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Number of search results to consider for summarization (default: 5)",
+    )
+
+    # Existing rag parser
     rag_parser = subparsers.add_parser(
         "rag", help="Perform RAG (search + generate answer)"
     )
@@ -32,6 +45,57 @@ def main():
     args = parser.parse_args()
 
     match args.command:
+        # New case for summarize command
+        case "summarize":
+            query = args.query
+            limit = args.limit
+            print(f"Summarize Query: {query}, Limit: {limit}\n")
+
+            # 1. Load movies data
+            from lib.search_utils import load_movies
+            from lib.hybrid_search import HybridSearch
+            
+            all_movies_data = load_movies()
+            search_instance = HybridSearch(all_movies_data)
+
+            # 2. Perform RRF search
+            print("Performing RRF search...")
+            # Pass the limit argument to rrf_search
+            rrf_results = search_instance.rrf_search(query, k=60, limit=limit) 
+            
+            # Format search results for printing
+            search_results_output = []
+            for i, result in enumerate(rrf_results):
+                title = result.get("doc", {}).get("title", "N/A")
+                search_results_output.append(f"  - {title}")
+
+            # Construct the specific prompt for summarization
+            results_string = "\n".join(search_results_output)
+            
+            # The prompt provided by the user:
+            summarize_prompt_template = f"""
+Provide information useful to this query by synthesizing information from multiple search results in detail.
+The goal is to provide comprehensive information so that users know what their options are.
+Your response should be information-dense and concise, with several key pieces of information about the genre, plot, etc. of each movie.
+This should be tailored to Hoopla users. Hoopla is a movie streaming service.
+Query: {query}
+Search Results:
+{results_string}
+Provide a comprehensive 3–4 sentence answer that combines information from multiple sources:
+"""
+
+            # Call the simulated Gemini API
+            summary_response = call_gemini_api(summarize_prompt_template)
+
+            # 3. Print the results in the specified format
+            print("Search Results:")
+            for line in search_results_output:
+                print(line)
+
+            print("\nLLM Summary:")
+            print(summary_response)
+
+        # Existing case for rag command
         case "rag":
             query = args.query
             print(f"RAG Query: {query}\n")
