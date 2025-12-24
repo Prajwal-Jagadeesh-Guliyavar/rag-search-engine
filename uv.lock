@@ -794,6 +794,7 @@ dependencies = [
     { name = "pillow" },
     { name = "python-dotenv" },
     { name = "sentence-transformers" },
+    { name = "torch" },
 ]
 
 [package.metadata]
@@ -805,6 +806,7 @@ requires-dist = [
     { name = "pillow", specifier = ">=12.0.0" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "sentence-transformers", specifier = ">=5.2.0" },
+    { name = "torch", specifier = ">=2.9.1" },
 ]
 
 [[package]]
